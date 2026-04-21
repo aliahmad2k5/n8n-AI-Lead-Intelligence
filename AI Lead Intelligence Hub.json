@@ -1,0 +1,355 @@
+{
+  "name": "AI Lead Intelligence Hub",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -272,
+        -64
+      ],
+      "id": "b3b320c3-8f65-40ee-b883-8ed38c010ae2",
+      "name": "Webhook",
+      "webhookId": "bcc99577-45e7-4fc9-8013-e8a04dcff701"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const fields = $json.body.data.fields;\n\n// Helper to find field value by label\nconst getVal = (label) => fields.find(f => f.label === label)?.value;\n\n// Extract the text for the dropdown (Budget)\nconst budgetField = fields.find(f => f.label === 'Estimated Budget');\nconst selectedBudget = budgetField.options.find(o => o.id === budgetField.value[0])?.text;\n\nreturn {\n  name: getVal('Full Name'),\n  email: getVal('Business Email (Required)'),\n  company: getVal('Company Name'),\n  website: getVal('Website URL'),\n  problem: getVal('How can we help?'),\n  budget: selectedBudget\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -48
+      ],
+      "id": "5ef58526-e059-4181-98cb-ded8f334240d",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an Elite B2B Sales Strategist. Analyze the lead data and return ONLY a JSON object with these keys: lead_score (1-100), summary (1 sentence), pain_point, and suggested_strategy."
+            },
+            {
+              "content": "=Analyze this lead:  Name: {{ $json.name }} , Company: {{ $json.company }} , Problem:{{ $json.problem }} , Budget: {{ $json.budget }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        288,
+        -48
+      ],
+      "id": "5f56d806-96ad-4d27-8b2f-18f17d78baed",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "CU8swWjDxdZ8EZ47",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7f6decf5-a46f-4d0c-954a-41545e1e1e6c",
+              "leftValue": "={{ $json.output[0].content[0].text.lead_score }}",
+              "rightValue": 80,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        -32
+      ],
+      "id": "f8695114-6643-4ca1-8e28-31e588774aa2",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AHTNFDZ8T",
+          "mode": "list",
+          "cachedResultName": "all-alees-workplace"
+        },
+        "text": "=🚀 New High-Value Lead! 🚀  Score: {{ $json.output[0].content[0].text.lead_score }}/100 Prospect: Marcus Thorne Summary: {{ $json.output[0].content[0].text.summary }} Action Plan: {{ $json.output[0].content[0].text.suggested_strategy }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1264,
+        -144
+      ],
+      "id": "1a89e73d-e193-4fcb-8512-c856c9328a6e",
+      "name": "Send a message",
+      "webhookId": "875d9edc-2d8e-48b0-a50a-3effa7ae1837",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "mhXhaUUwRDwt5ppu",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $node[\"Code in JavaScript\"].json.email }}",
+        "subject": "We've received your inquiry!",
+        "message": "=Hi {{ $node[\"Code in JavaScript\"].json.name }}, thanks for reaching out. We've received your notes regarding {{ $node[\"Code in JavaScript\"].json.company }} and our team will be in touch shortly.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        64
+      ],
+      "id": "86445254-59dd-4cfb-9f1b-eebff96abe79",
+      "name": "Send a message1",
+      "webhookId": "6677f061-f95d-4e3d-8ea6-458530f1f5a3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i0iQKg8Wnz9MhmCd",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1cnyXwUlrWU60E4wjikaYwmTMW4kjpv517LqMTYfmaA8",
+          "mode": "list",
+          "cachedResultName": "AI Lead Intelligence Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cnyXwUlrWU60E4wjikaYwmTMW4kjpv517LqMTYfmaA8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cnyXwUlrWU60E4wjikaYwmTMW4kjpv517LqMTYfmaA8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $now }}",
+            "name": "={{ $node[\"Code in JavaScript\"].json.name }}",
+            "company": "={{ $node[\"Code in JavaScript\"].json.company }}",
+            "score": "={{ $json.output[0].content[0].text.lead_score }}",
+            "pain point": "={{ $json.output[0].content[0].text.pain_point }}",
+            "strategy": "={{ $json.output[0].content[0].text.suggested_strategy }}",
+            "email": "={{ $node[\"Code in JavaScript\"].json.email }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pain point",
+              "displayName": "pain point",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "strategy",
+              "displayName": "strategy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        704,
+        -32
+      ],
+      "id": "0fe7ae0d-bbf5-4d5a-9093-0d83fa2fbc89",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "kxpy6lXyz6WBqTJe",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9308800d-1894-4deb-81f0-df41051f918e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63246d079db52102a202056db122bcb480cdda31b764c1099a9dbda369135a76"
+  },
+  "id": "qe3AN2w56TDlVjpU",
+  "tags": []
+}
